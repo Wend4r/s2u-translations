@@ -21,7 +21,7 @@
 					"description": "Comma-delimited, ordered pairs of indexes and format strings",
 
 					"type": "string",
-					"pattern": "^(?:\\{\\d:(?:(?:b|c|d|i|u|f|s|x|X))\\}(?:.)?)+$"
+					"pattern": "^(?:\\{\\d+:(?:[-+0# ]?)(?:\\d+|\\*)?(?:\\.(\\d+|\\*))?(?:[hljztL]?)(?:[bcdiouxXfFeEgGaAspn%])\\}(?:.)?)+$"
 				},
 				"ar":
 				{
