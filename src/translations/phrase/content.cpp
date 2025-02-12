@@ -75,7 +75,7 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 					char sFormat[8] = "%";
 
 					strncpy(&sFormat[1], pszFormatType, sizeof(sFormat) - 1);
-					sFrameResult.AppendFormat(sFormat, va_arg(aParams, uint64));
+					sFrameResult.AppendFormatV(sFormat, aParams);
 
 					break;
 				}
