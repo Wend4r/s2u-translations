@@ -28,7 +28,9 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 
 			CBufferStringN<MAX_TRANSLATIONS_FORMAT_FRAME_RESULT_LENGTH> sFrameResult;
 
-			switch(*aFrame.GetArgument())
+			const char *pszFormatType = aFrame.GetArgument();
+
+			switch(*pszFormatType)
 			{
 				case 'b':
 				{
@@ -54,29 +56,7 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 
 				case 'c':
 				{
-					sFrameResult.AppendRepeat((char)va_arg(aParams, int), 1);
-
-					break;
-				}
-
-				case 'd':
-				case 'i':
-				{
-					sFrameResult.Format("%d", va_arg(aParams, int));
-
-					break;
-				}
-
-				case 'u':
-				{
-					sFrameResult.Format("%u", va_arg(aParams, uint));
-
-					break;
-				}
-
-				case 'f':
-				{
-					sFrameResult.Format("%lf", va_arg(aParams, double));
+					sFrameResult.AppendRepeat(static_cast<char>(va_arg(aParams, int)), 1);
 
 					break;
 				}
@@ -90,16 +70,12 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 					break;
 				}
 
-				case 'x':
+				default:
 				{
-					sFrameResult.Format("%x", va_arg(aParams, int));
+					char sFormat[8] = "%";
 
-					break;
-				}
-
-				case 'X':
-				{
-					sFrameResult.Format("%X", va_arg(aParams, int));
+					strncpy(&sFormat[1], pszFormatType, sizeof(sFormat) - 1);
+					sFrameResult.AppendFormat(sFormat, va_arg(aParams, uint64));
 
 					break;
 				}
