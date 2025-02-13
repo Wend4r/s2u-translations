@@ -1,5 +1,7 @@
 #include <translations.hpp>
 
+#include <string.h>
+
 CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t nCount, ...) const
 {
 	const auto &mapFrames = aData.GetFrames();
@@ -76,6 +78,39 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 
 					strncpy(&sFormat[1], pszFormatType, sizeof(sFormat) - 1);
 					sFrameResult.AppendFormatV(sFormat, aParams);
+
+					// Skip va argument to next FormatV.
+					{
+						bool bIsFloatPoint = false;
+
+						char cSpecifier;
+
+						while((cSpecifier = *pszFormatType) && !bIsFloatPoint)
+						{
+							switch(cSpecifier | (1 << 5))
+							{
+								case 'a':
+								case 'e':
+								case 'f':
+								{
+									bIsFloatPoint = true;
+
+									break;
+								}
+							}
+
+							pszFormatType++;
+						}
+
+						if(bIsFloatPoint)
+						{
+							va_arg(aParams, double);
+						}
+						else
+						{
+							va_arg(aParams, int);
+						}
+					}
 
 					break;
 				}
