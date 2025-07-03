@@ -137,9 +137,18 @@ bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys,
 	do
 	{
 		const char *pszKey = pDataKeys->GetMemberName(n);
-		
-		const char *pszValue = pDataKeys->GetMember(n)->GetString();
-		
+
+		const KeyValues3 *pKV = pDataKeys->GetMember(n);
+
+		if(!pKV)
+		{
+			n++;
+
+			continue;
+		}
+
+		const char *pszValue = pKV->GetString();
+
 		if(!V_strcmp(pszKey, "#format"))
 		{
 			aPhrase.ParseFormatString(pszValue, vecMessages);
