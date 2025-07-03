@@ -1,18 +1,8 @@
 #include <translations.hpp>
 
-Translations::CPhrase::CFormat::CFormat()
- :  m_mapFrames(DefLessFunc(const CFrame_t))
-{
-}
-
-const CUtlMap<Translations::CPhrase::CFormat::CFrame_t, Translations::CPhrase::CFormat::CFrame> &Translations::CPhrase::CFormat::GetFrames() const
-{
-	return m_mapFrames;
-}
-
 CUtlString Translations::CPhrase::CFormat::GenerateString() const
 {
-	CBufferStringN<1024> sResult;
+	CXLargeBufferString sResult;
 
 	FOR_EACH_MAP_FAST(m_mapFrames, iFrame)
 	{
@@ -24,7 +14,7 @@ CUtlString Translations::CPhrase::CFormat::GenerateString() const
 	return sResult;
 }
 
-const char *Translations::CPhrase::CFormat::ParseString(const char *psz, CBufferStringVector &vecMessages)
+const char *Translations::CPhrase::CFormat::ParseString(const char *pszText, CStringVector &vecMessages)
 {
 	do
 	{
@@ -32,53 +22,49 @@ const char *Translations::CPhrase::CFormat::ParseString(const char *psz, CBuffer
 
 		decltype(m_mapFrames)::KeyType_t iKey = iInvalid;
 
-		while(*psz)
+		while(*pszText)
 		{
-			if(*psz == ',')
+			if(*pszText == ',')
 			{
-				psz++;
+				pszText++;
 			}
 
-			if(*psz == '{')
+			if(*pszText == '{')
 			{
-				psz++;
+				pszText++;
 			}
 			else
 			{
-				static const char *s_pszMessageConcat[] = {"Format: ", "no start with"};
+				vecMessages.AddToTail(CSmallBufferString({"Format: ", "no start with"}));
 
-				vecMessages.AddToTail(s_pszMessageConcat);
-
-				return psz;
+				return pszText;
 			}
 
 			{
 				char *psNextIterfator;
 
-				iKey = m_mapFrames.Insert((CFormat_t)strtoul(psz, &psNextIterfator, 10));
-				psz = psNextIterfator;
+				iKey = m_mapFrames.Insert(static_cast<CFormat_t>(strtoul(pszText, &psNextIterfator, 10)));
+				pszText = psNextIterfator;
 			}
 
-			if(*psz == ':')
+			if(*pszText == ':')
 			{
-				psz++;
+				pszText++;
 			}
 			else
 			{
-				static const char *s_pszMessageConcat[] = {"Format: ", "no separator character"};
+				vecMessages.AddToTail(CSmallBufferString({"Format: ", "no separator character"}));
 
-				vecMessages.AddToTail(s_pszMessageConcat);
-
-				return psz;
+				return pszText;
 			}
 
 			if(iKey != iInvalid)
 			{
-				psz = m_mapFrames.Element(iKey).ParseString(psz, vecMessages);
+				pszText = m_mapFrames.Element(iKey).ParseString(pszText, vecMessages);
 			}
 		}
 	}
-	while(*psz && *psz == ',');
+	while(*pszText && *pszText == ',');
 
-	return psz;
+	return pszText;
 }

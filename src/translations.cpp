@@ -34,9 +34,9 @@ Translations::Translations()
 {
 }
 
-Translations::CKey_t Translations::GetKeyT(const char *pszInit)
+Translations::Key_t Translations::GetKey(const char *pszInit)
 {
-	CKey_t nResult {};
+	Key_t nResult {};
 
 	if(!pszInit[0])
 	{
@@ -48,15 +48,15 @@ Translations::CKey_t Translations::GetKeyT(const char *pszInit)
 	}
 	else if(!pszInit[2])
 	{
-		nResult = *(uint16 *)pszInit;
+		nResult = *reinterpret_cast<const uint16 *>(pszInit);
 	}
 	else if(!pszInit[3])
 	{
-		nResult = *(uint16 *)(pszInit + 1) << 8 | *pszInit;
+		nResult = *reinterpret_cast<const uint16 *>(pszInit + 1) << 8 | *pszInit;
 	}
 	else if(!pszInit[4])
 	{
-		nResult = *(uint32 *)pszInit;
+		nResult = *reinterpret_cast<const uint32 *>(pszInit);
 	}
 	else
 	{
@@ -73,12 +73,7 @@ bool Translations::FindPhrase(const char *pszName, int &iFound) const
 	return iFound != m_mapPhrases.InvalidIndex();
 }
 
-const Translations::CPhrase &Translations::GetPhrase(int iFound) const
-{
-	return m_mapPhrases.Element(iFound);
-}
-
-bool Translations::Parse(const KeyValues3 *pRoot, CBufferStringVector &vecMessages)
+bool Translations::Parse(const KeyValues3 *pRoot, CStringVector &vecMessages)
 {
 	// Entering to "Phrases" (if any).
 	{
@@ -94,34 +89,30 @@ bool Translations::Parse(const KeyValues3 *pRoot, CBufferStringVector &vecMessag
 
 	if(!iMemberCount)
 	{
-		static const char *s_pszMessageConcat[] = {"No members"};
-
-		vecMessages.AddToTail(s_pszMessageConcat);
+		vecMessages.AddToTail("No members");
 
 		return true;
 	}
 
-	for(KV3MemberId_t n = 0; n < iMemberCount; n++)
+	KV3MemberId_t n = 0;
+
+	do
 	{
-		const char *pszPhraseName = pRoot->GetMemberName(n);
-
-		const KeyValues3 *pPhraseDataKeys = pRoot->GetMember(n);
-
-		ParsePhrase(pszPhraseName, pPhraseDataKeys, vecMessages);
+		ParsePhrase(pRoot->GetMemberName(n), pRoot->GetMember(n), vecMessages);
+		n++;
 	}
+	while(n < iMemberCount);
 
 	return true;
 }
 
-bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, CBufferStringVector &vecMessages)
+bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, CStringVector &vecMessages)
 {
 	int iMemberCount = pDataKeys->GetMemberCount();
 
 	if(!iMemberCount)
 	{
-		static const char *s_pszMessageConcat[] = {"No members"};
-
-		vecMessages.AddToTail(s_pszMessageConcat);
+		vecMessages.AddToTail("No members");
 
 		return false;
 	}
@@ -132,44 +123,35 @@ bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys,
 
 	CUtlSymbolLarge sPhrase = GetPhraseSymbol(pszName);
 
-	if((iPhraseKey = mapPhrases.Find(sPhrase)) == mapPhrases.InvalidIndex())
+	iPhraseKey = mapPhrases.Find(sPhrase);
+
+	if(iPhraseKey == mapPhrases.InvalidIndex())
 	{
 		iPhraseKey = mapPhrases.Insert(sPhrase);
 	}
 
 	auto &aPhrase = mapPhrases.Element(iPhraseKey);
 
-	for(KV3MemberId_t n = 0; n < iMemberCount; n++)
+	KV3MemberId_t n = 0;
+
+	do
 	{
 		const char *pszKey = pDataKeys->GetMemberName(n);
-
+		
 		const char *pszValue = pDataKeys->GetMember(n)->GetString();
-
+		
 		if(!V_strcmp(pszKey, "#format"))
 		{
 			aPhrase.ParseFormatString(pszValue, vecMessages);
 		}
 		else
 		{
-			aPhrase.InsertContent(GetKeyT(pszKey), pszValue);
+			aPhrase.InsertContent(GetKey(pszKey), pszValue);
 		}
+
+		n++;
 	}
-
+	while(n < iMemberCount);
+	
 	return true;
-}
-
-void Translations::Purge()
-{
-	m_mapPhrases.Purge();
-	m_aPhraseSymbolTable.Purge();
-}
-
-CUtlSymbolLarge Translations::GetPhraseSymbol(const char *pszName)
-{
-	return m_aPhraseSymbolTable.AddString(pszName);
-}
-
-CUtlSymbolLarge Translations::FindPhraseSymbol(const char *pszName) const
-{
-	return m_aPhraseSymbolTable.Find(pszName);
 }

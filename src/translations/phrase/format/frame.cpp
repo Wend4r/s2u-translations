@@ -1,42 +1,35 @@
 #include <translations.hpp>
 
-const char *Translations::CPhrase::CFormat::CFrame::GetArgument() const
-{
-	return m_sArgument;
-}
-
-const char *Translations::CPhrase::CFormat::CFrame::ParseString(const char *psz, CBufferStringVector &vecMessages)
+const char *Translations::CPhrase::CFormat::CFrame::ParseString(const char *pszText, CStringVector &vecMessages)
 {
 	size_t nLength = 0;
 
 	while(true)
 	{
-		if(*psz)
+		if(*pszText)
 		{
-			if(*psz == '}')
+			if(*pszText == '}')
 			{
 				m_sArgument[nLength] = '\0';
 
-				return psz + 1;
+				return pszText + 1;
 			}
 			else if(nLength < sizeof(m_sArgument) - 1)
 			{
-				m_sArgument[nLength++] = *psz;
+				m_sArgument[nLength++] = *pszText;
 			}
 		}
 		else
 		{
 			m_sArgument[nLength] = '\0';
 
-			static const char *s_pszMessageConcat[] = {"Format: ", "no end"};
+			vecMessages.AddToTail(CSmallBufferString({"Format: ", "no end"}));
 
-			vecMessages.AddToTail(s_pszMessageConcat);
-
-			return psz;
+			return pszText;
 		}
 
-		psz++;
+		pszText++;
 	}
 
-	return psz;
+	return pszText;
 }

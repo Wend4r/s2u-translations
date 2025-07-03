@@ -38,51 +38,30 @@ class KeyValues3;
 class Translations
 {
 public:
-	using CBufferStringSection = CBufferStringN<MAX_TRANSLATIONS_MESSAGE_LENGTH>;
-
-	class CBufferStringConcat : public CBufferStringSection
-	{
-	public:
-		using Base = CBufferStringSection;
-		using Base::Base;
-
-		template<uintp N>
-		CBufferStringConcat(const char *(&pszSplit)[N])
-		{
-			AppendConcat(N, pszSplit, NULL);
-		}
-
-		template<uintp N>
-		CBufferStringConcat(const char *pszStartWtih, const char *(&pszSplit)[N])
-		{
-			Insert(0, pszStartWtih);
-			AppendConcat(N, pszSplit, NULL);
-		}
-	}; // GameData::CBufferStringConcat
-
-	using CBufferStringVector = CUtlVector<CBufferStringConcat>;
+	using CStringVector = CUtlVector<CBufferString>;
 
 public:
 	Translations();
 
 public:
-	using CKey_t = uint32;
+	using Key_t = uint32;
+	static Key_t GetKey(const char *pszInit);
 
-	static CKey_t GetKeyT(const char *pszInit);
-
-	struct CKey
+	class CKey
 	{
+	public:
+		CKey(const char *pszInit) { *reinterpret_cast<Key_t *>(this) = GetKey(pszInit); }
+		CKey(const Key_t nInit) { *reinterpret_cast<Key_t *>(this) = nInit; }
+		Key_t Get() const { return *reinterpret_cast<const Key_t *>(m_sCode); }
+		const char *String() const { return m_sCode; }
+
+		operator Key_t() const { return Get(); }
+		bool operator==(const CKey &aRigth) const { return Get() == aRigth.Get(); }
+		bool operator!=(const CKey &aRigth) const { return !operator==(aRigth); }
+		bool operator<(const CKey &aRigth) const { return Get() < aRigth.Get(); }
+
+	private:
 		char m_sCode[4];
-
-		CKey(const char *pszInit);
-		CKey(const CKey_t nInit);
-		CKey_t Get() const;
-		const char *String() const;
-
-		operator CKey_t() const { return Get(); }
-		bool operator==(const CKey &aRigth) const;
-		bool operator!=(const CKey &aRigth) const;
-		bool operator<(const CKey &aRigth) const;
 	}; // CKey
 
 	class CPhrase
@@ -90,7 +69,7 @@ public:
 		friend class Translations;
 
 	public:
-		CPhrase();
+		CPhrase() : m_map(DefLessFunc(const Key_t)) {}
 
 	public:
 		class CFormat;
@@ -112,7 +91,7 @@ public:
 			friend class CPhrase;
 
 		public:
-			CFormat();
+			CFormat() : m_mapFrames(DefLessFunc(const CFrame_t)) {}
 
 			using CFrame_t = uint32;
 
@@ -121,53 +100,58 @@ public:
 				friend class CFormat;
 
 			public:
-				const char *GetArgument() const;
+				const char *GetArgument() const { return m_sArgument; }
 
 			protected:
-				const char *ParseString(const char *psz, CBufferStringVector &vecMessages);
+				const char *ParseString(const char *pszText, CStringVector &vecMessages);
 
 			private:
 				char m_sArgument[8];
 			}; // CFrame
 
 		public:
-			const CUtlMap<CFrame_t, CFrame> &GetFrames() const;
+			const CUtlMap<CFrame_t, CFrame> &GetFrames() const { return m_mapFrames; }
 			CUtlString GenerateString() const;
 
 		protected:
-			const char *ParseString(const char *psz, CBufferStringVector &vecMessages);
+			const char *ParseString(const char *pszText, CStringVector &vecMessages);
 
 		private:
 			CUtlMap<CFrame_t, CFrame> m_mapFrames;
 		}; // CFormat
 
-		const CFormat &GetFormat() const;
+		const CFormat &GetFormat() const { return m_aFormat; }
 		bool Find(const CKey &sCountryCode, const CContent *&psOutput) const;
 
 	protected:
-		const char *ParseFormatString(const char *psz, CBufferStringVector &vecMessages);
-		void InsertContent(const CKey_t nKey, const CContent &aData);
+		const char *ParseFormatString(const char *psz, CStringVector &vecMessages) { return m_aFormat.ParseString(psz, vecMessages); }
+		void InsertContent(const Key_t nKey, const CContent &aData) { m_map.Insert(nKey, aData); }
 
 	private:
 		using CFormat_t = uint32;
+
 		CFormat m_aFormat;
-		CUtlMap<CKey_t, CContent> m_map;
+		CUtlMap<Key_t, CContent> m_map;
 	}; // CPhrase
 
 public:
 	bool FindPhrase(const char *pszName, int &iFound) const;
-	const CPhrase &GetPhrase(int iFound) const;
+	const CPhrase &GetPhrase(int iFound) const { return m_mapPhrases.Element(iFound); }
 
 public:
-	bool Parse(const KeyValues3 *pRoot, CBufferStringVector &vecMessages);
-	bool ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, CBufferStringVector &vecMessages);
+	bool Parse(const KeyValues3 *pRoot, CStringVector &vecMessages);
+	bool ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, CStringVector &vecMessages);
 
 public:
-	void Purge();
+	void Purge()
+	{
+		m_mapPhrases.Purge();
+		m_aPhraseSymbolTable.Purge();
+	}
 
 protected:
-	CUtlSymbolLarge GetPhraseSymbol(const char *pszName);
-	CUtlSymbolLarge FindPhraseSymbol(const char *pszName) const;
+	CUtlSymbolLarge GetPhraseSymbol(const char *pszName) { return m_aPhraseSymbolTable.AddString(pszName); }
+	CUtlSymbolLarge FindPhraseSymbol(const char *pszName) const { return m_aPhraseSymbolTable.Find(pszName); }
 
 private:
 	CUtlSymbolTableLarge_CI m_aPhraseSymbolTable;
