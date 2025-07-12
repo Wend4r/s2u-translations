@@ -1,19 +1,16 @@
 #include <translations.hpp>
 
+#include <stddef.h>
 #include <string.h>
 
-CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t nCount, ...) const
+CUtlString Translations::CPhrase::CContent::FormatV(const CFormat &aData, va_list aParams) const
 {
 	const auto &mapFrames = aData.GetFrames();
 
-	CUtlString sResult = Get();
+	CPhraseBuffer sResult = static_cast<CUtlString>(*this);
 
 	{
-		va_list aParams;
-
-		va_start(aParams, nCount);
-
-		for(size_t n = 1; n <= nCount; n++)
+		for(size_t n = 1, nCount = mapFrames.Count(); n <= nCount; n++)
 		{
 			auto iFound = mapFrames.Find(n);
 
@@ -22,13 +19,12 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 				continue;
 			}
 
-			CBufferStringN<MAX_TRANSLATIONS_FORMAT_FRAME_TARGET_LENGTH> sFrameTarget;
+			CFormatBuffer sFrameTarget;
+			CFrameBuffer sFrameResult;
 
 			sFrameTarget.Format("{%zd}", n);
 
-			auto aFrame = mapFrames.Element(iFound);
-
-			CBufferStringN<MAX_TRANSLATIONS_FORMAT_FRAME_RESULT_LENGTH> sFrameResult;
+			const auto &aFrame = mapFrames.Element(iFound);
 
 			const char *pszFormatType = aFrame.GetArgument();
 
@@ -40,15 +36,7 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 
 					do
 					{
-						if(nValue & 1)
-						{
-							sFrameResult.AppendRepeat('1', 1);
-						}
-						else
-						{
-							sFrameResult.AppendRepeat('0', 1);
-						}
-
+						sFrameResult += (nValue & 1) ? '1' : '0';
 						nValue >>= 1;
 					}
 					while(nValue);
@@ -58,7 +46,7 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 
 				case 'c':
 				{
-					sFrameResult.AppendRepeat(static_cast<char>(va_arg(aParams, int)), 1);
+					sFrameResult += static_cast<char>(va_arg(aParams, int));
 
 					break;
 				}
@@ -67,7 +55,7 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 				{
 					const char *pszConcat[] = {va_arg(aParams, const char *)};
 
-					sFrameResult.AppendConcat(ARRAYSIZE(pszConcat), pszConcat, NULL);
+					sFrameResult.AppendConcatN(pszConcat);
 
 					break;
 				}
@@ -92,6 +80,7 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 								case 'a':
 								case 'e':
 								case 'f':
+								case 'g':
 								{
 									bIsFloatPoint = true;
 
@@ -116,11 +105,23 @@ CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, size_t 
 				}
 			}
 
-			sResult = sResult.Replace(sFrameTarget.Get(), sFrameResult.Get());
+			sResult.Replace(sFrameTarget.Get(), sFrameResult.Get());
 		}
-
-		va_end(aParams);
 	}
+
+	return sResult;
+}
+
+
+CUtlString Translations::CPhrase::CContent::Format(const CFormat &aData, int nCount, ...) const
+{
+	va_list aParams;
+
+	va_start(aParams, nCount);
+
+	auto sResult = FormatV(aData, aParams);
+
+	va_end(aParams);
 
 	return sResult;
 }

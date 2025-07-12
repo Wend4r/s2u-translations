@@ -22,14 +22,15 @@
 #ifndef _INCLUDE_TRANSLATIONS_HPP_
 #define _INCLUDE_TRANSLATIONS_HPP_
 
+#include <stdarg.h>
+
 #include <tier0/bufferstring.h>
 #include <tier0/platform.h>
 #include <tier0/strtools.h>
 #include <tier1/utlmap.h>
 #include <tier1/utlsymbollarge.h>
 
-#define MAX_TRANSLATIONS_MESSAGE_LENGTH 256
-
+#define MAX_TRANSLATIONS_PHRASE_LENGTH 512
 #define MAX_TRANSLATIONS_FORMAT_FRAME_TARGET_LENGTH 32 // 2 ("{}") + 11 ("-2147483648") + 1 (null terminated) = 14
 #define MAX_TRANSLATIONS_FORMAT_FRAME_RESULT_LENGTH 512
 
@@ -39,6 +40,10 @@ class Translations
 {
 public:
 	using CStringVector = CUtlVector<CUtlString>;
+
+	using CPhraseBuffer = CBufferStringN<MAX_TRANSLATIONS_PHRASE_LENGTH>;
+	using CFormatBuffer = CBufferStringN<MAX_TRANSLATIONS_FORMAT_FRAME_TARGET_LENGTH>;
+	using CFrameBuffer = CBufferStringN<MAX_TRANSLATIONS_FORMAT_FRAME_RESULT_LENGTH>;
 
 public:
 	Translations();
@@ -83,7 +88,8 @@ public:
 			using CBase::CBase;
 
 		public:
-			CUtlString Format(const CFormat &aData, size_t nCount, ...) const;
+			CUtlString FormatV(const CFormat &aData, va_list aParams) const;
+			CUtlString Format(const CFormat &aData, int nCount, ...) const;
 		}; // CContent
 
 		class CFormat
