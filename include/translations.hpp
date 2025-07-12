@@ -38,7 +38,7 @@ class KeyValues3;
 class Translations
 {
 public:
-	using CStringVector = CUtlVector<CBufferString>;
+	using CStringVector = CUtlVector<CUtlString>;
 
 public:
 	Translations();
