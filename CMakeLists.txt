@@ -43,7 +43,6 @@ include("cmake/platform/shared.cmake")
 include("cmake/sourcesdk.cmake")
 
 set(SOURCE_FILES
-	${SOURCE_TRANSLATIONS_PHRASE_FORMAT_DIR}/frame.cpp
 	${SOURCE_TRANSLATIONS_PHRASE_DIR}/content.cpp
 	${SOURCE_TRANSLATIONS_PHRASE_DIR}/format.cpp
 	${SOURCE_TRANSLATIONS_DIR}/phrase.cpp

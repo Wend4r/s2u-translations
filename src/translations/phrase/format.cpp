@@ -4,9 +4,9 @@ CUtlString Translations::CPhrase::CFormat::GenerateString() const
 {
 	CXLargeBufferString sResult;
 
-	FOR_EACH_MAP_FAST(m_mapFrames, iFrame)
+	FOR_EACH_MAP_FAST(m_mapFormat, iFrame)
 	{
-		sResult.AppendFormat("{%d:%s},", m_mapFrames.Key(iFrame), m_mapFrames.Element(iFrame).GetArgument());
+		sResult.AppendFormat("{%d:%s},", m_mapFormat.Key(iFrame).GetId(), m_mapFormat.Element(iFrame).String());
 	}
 
 	sResult.SetLength(sResult.Length() - 1);
@@ -16,55 +16,58 @@ CUtlString Translations::CPhrase::CFormat::GenerateString() const
 
 const char *Translations::CPhrase::CFormat::ParseString(const char *pszText, CStringVector &vecMessages)
 {
-	do
+	const char *pszFirstMark = nullptr;
+
+	const auto iInvalid = decltype(m_mapFormat)::InvalidIndex();
+
+	decltype(m_mapFormat)::KeyType_t iKey = iInvalid;
+
+	while(*pszText)
 	{
-		const auto &iInvalid = decltype(m_mapFrames)::InvalidIndex();
-
-		decltype(m_mapFrames)::KeyType_t iKey = iInvalid;
-
-		while(*pszText)
+		if(*pszText == '{')
 		{
-			if(*pszText == ',')
-			{
-				pszText++;
-			}
-
-			if(*pszText == '{')
-			{
-				pszText++;
-			}
-			else
-			{
-				vecMessages.AddToTail(CSmallBufferString({"Format: ", "no start with"}));
-
-				return pszText;
-			}
-
-			{
-				char *psNextIterfator;
-
-				iKey = m_mapFrames.Insert(static_cast<CFormat_t>(strtoul(pszText, &psNextIterfator, 10)));
-				pszText = psNextIterfator;
-			}
-
-			if(*pszText == ':')
-			{
-				pszText++;
-			}
-			else
-			{
-				vecMessages.AddToTail(CSmallBufferString({"Format: ", "no separator character"}));
-
-				return pszText;
-			}
-
-			if(iKey != iInvalid)
-			{
-				pszText = m_mapFrames.Element(iKey).ParseString(pszText, vecMessages);
-			}
+			pszText++;
+			pszFirstMark = pszText;
 		}
+
+		if(*pszText == ':')
+		{
+			if(!pszFirstMark)
+			{
+				vecMessages.AddToTail(CSmallBufferString({"Format: ", "no formated mark"}));
+
+				return pszText;
+			}
+
+			CSmallBufferString sFormatMark(pszFirstMark, static_cast<int>(pszText - pszFirstMark));
+
+			iKey = m_mapFormat.Insert(m_pTable->AddString(sFormatMark.String()));
+
+			pszText++;
+			pszFirstMark = nullptr;
+		}
+
+		if(iKey != iInvalid)
+		{
+			CBufferString sFormatArg;
+
+			while(*pszText && *pszText != '}')
+			{
+				sFormatArg += *pszText;
+				pszText++;
+			}
+
+			m_mapFormat.Element(iKey) = Move(sFormatArg);
+			iKey = iInvalid;
+		}
+
+		if(*pszText == ',')
+		{
+			iKey = iInvalid;
+		}
+
+		pszText++;
 	}
-	while(*pszText && *pszText == ',');
 
 	return pszText;
 }

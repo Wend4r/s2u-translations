@@ -27,6 +27,7 @@
 #include <tier0/bufferstring.h>
 #include <tier0/platform.h>
 #include <tier0/strtools.h>
+#include <tier0/utlsymbol.h>
 #include <tier1/utlmap.h>
 #include <tier1/utlsymbollarge.h>
 
@@ -46,7 +47,7 @@ public:
 	using CFrameBuffer = CBufferStringN<MAX_TRANSLATIONS_FORMAT_FRAME_RESULT_LENGTH>;
 
 public:
-	Translations();
+	Translations() : m_mapPhrases(DefLessFunc(const CUtlSymbolLarge)) {}
 
 public:
 	using Key_t = uint32;
@@ -74,18 +75,34 @@ public:
 		friend class Translations;
 
 	public:
-		CPhrase() : m_map(DefLessFunc(const Key_t)) {}
+		CPhrase(CUtlSymbolTable *pTable = nullptr) : m_aFormat(pTable), m_map(DefLessFunc(const Key_t)) {}
+		CPhrase(const CPhrase &copyFrom) { CopyFrom(copyFrom); }
+		CPhrase(CPhrase &&moveFrom) { MoveFrom(Move(moveFrom)); }
+		CPhrase &operator=(const CPhrase &copyFrom) { return CopyFrom(copyFrom); }
+		CPhrase &operator=(CPhrase &&moveFrom) { return MoveFrom(Move(moveFrom)); }
+
+		CPhrase &CopyFrom(const CPhrase &copyFrom)
+		{
+			m_aFormat = copyFrom.m_aFormat;
+			m_map = copyFrom.m_map;
+
+			return *this;
+		}
+		CPhrase &MoveFrom(CPhrase &&moveFrom)
+		{
+			m_aFormat = Move(moveFrom.m_aFormat);
+			m_map = Move(moveFrom.m_map);
+
+			return *this;
+		}
 
 	public:
 		class CFormat;
 
-		using CContentBase = CUtlString;
-
-		class CContent : public CContentBase
+		class CContent : public CUtlString
 		{
 		public:
-			using CBase = CContentBase;
-			using CBase::CBase;
+			using CUtlString::CUtlString;
 
 		public:
 			CUtlString FormatV(const CFormat &aData, va_list aParams) const;
@@ -97,33 +114,19 @@ public:
 			friend class CPhrase;
 
 		public:
-			CFormat() : m_mapFrames(DefLessFunc(const CFrame_t)) {}
-
-			using CFrame_t = uint32;
-
-			class CFrame
-			{
-				friend class CFormat;
-
-			public:
-				const char *GetArgument() const { return m_sArgument; }
-
-			protected:
-				const char *ParseString(const char *pszText, CStringVector &vecMessages);
-
-			private:
-				char m_sArgument[8];
-			}; // CFrame
+			CFormat(CUtlSymbolTable *pTable = nullptr) : m_pTable(pTable), m_mapFormat(DefLessFunc(const CUtlSymbol)) {}
 
 		public:
-			const CUtlMap<CFrame_t, CFrame> &GetFrames() const { return m_mapFrames; }
+			const CUtlSymbolTable *GetTable() const { return m_pTable; }
+			const CUtlMap<CUtlSymbol, CBufferString> &GetFrames() const { return m_mapFormat; }
 			CUtlString GenerateString() const;
 
 		protected:
 			const char *ParseString(const char *pszText, CStringVector &vecMessages);
 
 		private:
-			CUtlMap<CFrame_t, CFrame> m_mapFrames;
+			CUtlSymbolTable *m_pTable;
+			CUtlMap<CUtlSymbol, CBufferString> m_mapFormat;
 		}; // CFormat
 
 		const CFormat &GetFormat() const { return m_aFormat; }
@@ -131,11 +134,9 @@ public:
 
 	protected:
 		const char *ParseFormatString(const char *psz, CStringVector &vecMessages) { return m_aFormat.ParseString(psz, vecMessages); }
-		void InsertContent(const Key_t nKey, const CContent &aData) { m_map.Insert(nKey, aData); }
+		void InsertContent(const Key_t nKey, CContent &&aData) { m_map.Insert(nKey, Move(aData)); }
 
 	private:
-		using CFormat_t = uint32;
-
 		CFormat m_aFormat;
 		CUtlMap<Key_t, CContent> m_map;
 	}; // CPhrase
@@ -145,8 +146,16 @@ public:
 	const CPhrase &GetPhrase(int iFound) const { return m_mapPhrases.Element(iFound); }
 
 public:
-	bool Parse(const KeyValues3 *pRoot, CStringVector &vecMessages);
-	bool ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, CStringVector &vecMessages);
+	using CPhraseContent = CPhrase::CContent;
+
+	class IPhraseReplacer
+	{
+	public:
+		virtual CUtlString ProcessText(const CUtlString &sPhrase) const = 0;
+	};
+
+	bool Parse(const KeyValues3 *pRoot, IPhraseReplacer *pReplacer, CStringVector &vecMessages);
+	bool ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, IPhraseReplacer *pReplacer, CStringVector &vecMessages);
 
 public:
 	void Purge()
@@ -160,6 +169,7 @@ protected:
 	CUtlSymbolLarge FindPhraseSymbol(const char *pszName) const { return m_aPhraseSymbolTable.Find(pszName); }
 
 private:
+	CUtlSymbolTable m_tableFormatMarks;
 	CUtlSymbolTableLarge_CI m_aPhraseSymbolTable;
 	CUtlMap<CUtlSymbolLarge, CPhrase> m_mapPhrases;
 }; // Translations

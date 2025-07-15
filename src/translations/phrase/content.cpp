@@ -5,108 +5,101 @@
 
 CUtlString Translations::CPhrase::CContent::FormatV(const CFormat &aData, va_list aParams) const
 {
+	const auto *pTable = aData.GetTable();
+
+	AssertMsg(pTable, "Format marks table is not ready");
+
 	const auto &mapFrames = aData.GetFrames();
 
 	CPhraseBuffer sResult = static_cast<CUtlString>(*this);
 
+	FOR_EACH_MAP(mapFrames, i)
 	{
-		for(size_t n = 1, nCount = mapFrames.Count(); n <= nCount; n++)
+		CFormatBuffer sFrameTarget;
+		CFrameBuffer sFrameResult;
+
+		sFrameTarget.Format("{%s}", pTable->String(mapFrames.Key(i)));
+
+		const char *pszFormatArg = mapFrames.Element(i).String();
+
+		switch(*pszFormatArg)
 		{
-			auto iFound = mapFrames.Find(n);
-
-			if(iFound == mapFrames.InvalidIndex())
+			case 'b':
 			{
-				continue;
+				auto nValue = va_arg(aParams, int);
+
+				do
+				{
+					sFrameResult += (nValue & 1) ? '1' : '0';
+					nValue >>= 1;
+				}
+				while(nValue);
+
+				break;
 			}
 
-			CFormatBuffer sFrameTarget;
-			CFrameBuffer sFrameResult;
-
-			sFrameTarget.Format("{%zd}", n);
-
-			const auto &aFrame = mapFrames.Element(iFound);
-
-			const char *pszFormatType = aFrame.GetArgument();
-
-			switch(*pszFormatType)
+			case 'c':
 			{
-				case 'b':
-				{
-					auto nValue = va_arg(aParams, int);
+				sFrameResult += static_cast<char>(va_arg(aParams, int));
 
-					do
+				break;
+			}
+
+			case 's':
+			{
+				const char *pszConcat[] = {va_arg(aParams, const char *)};
+
+				sFrameResult.AppendConcatN(pszConcat);
+
+				break;
+			}
+
+			default:
+			{
+				char sFormat[8] = "%";
+
+				strncpy(&sFormat[1], pszFormatArg, sizeof(sFormat) - 1);
+				sFrameResult.AppendFormatV(sFormat, aParams);
+
+				// Skip va argument to next FormatV.
+				{
+					bool bIsFloatPoint = false;
+
+					char cSpecifier;
+
+					while((cSpecifier = *pszFormatArg) && !bIsFloatPoint)
 					{
-						sFrameResult += (nValue & 1) ? '1' : '0';
-						nValue >>= 1;
-					}
-					while(nValue);
-
-					break;
-				}
-
-				case 'c':
-				{
-					sFrameResult += static_cast<char>(va_arg(aParams, int));
-
-					break;
-				}
-
-				case 's':
-				{
-					const char *pszConcat[] = {va_arg(aParams, const char *)};
-
-					sFrameResult.AppendConcatN(pszConcat);
-
-					break;
-				}
-
-				default:
-				{
-					char sFormat[8] = "%";
-
-					strncpy(&sFormat[1], pszFormatType, sizeof(sFormat) - 1);
-					sFrameResult.AppendFormatV(sFormat, aParams);
-
-					// Skip va argument to next FormatV.
-					{
-						bool bIsFloatPoint = false;
-
-						char cSpecifier;
-
-						while((cSpecifier = *pszFormatType) && !bIsFloatPoint)
+						switch(cSpecifier | (1 << 5))
 						{
-							switch(cSpecifier | (1 << 5))
+							case 'a':
+							case 'e':
+							case 'f':
+							case 'g':
 							{
-								case 'a':
-								case 'e':
-								case 'f':
-								case 'g':
-								{
-									bIsFloatPoint = true;
+								bIsFloatPoint = true;
 
-									break;
-								}
+								break;
 							}
-
-							pszFormatType++;
 						}
 
-						if(bIsFloatPoint)
-						{
-							va_arg(aParams, double);
-						}
-						else
-						{
-							va_arg(aParams, int);
-						}
+						pszFormatArg++;
 					}
 
-					break;
+					if(bIsFloatPoint)
+					{
+						va_arg(aParams, double);
+					}
+					else
+					{
+						va_arg(aParams, int);
+					}
 				}
-			}
 
-			sResult.Replace(sFrameTarget.Get(), sFrameResult.Get());
+				break;
+			}
 		}
+
+		sResult.Replace(sFrameTarget.Get(), sFrameResult.Get());
 	}
 
 	return sResult;

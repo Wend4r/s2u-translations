@@ -29,11 +29,6 @@
 #include <tier0/commonmacros.h>
 #include <tier1/keyvalues3.h>
 
-Translations::Translations()
- :  m_mapPhrases(DefLessFunc(const CUtlSymbolLarge))
-{
-}
-
 Translations::Key_t Translations::GetKey(const char *pszInit)
 {
 	Key_t nResult {};
@@ -73,7 +68,7 @@ bool Translations::FindPhrase(const char *pszName, int &iFound) const
 	return iFound != m_mapPhrases.InvalidIndex();
 }
 
-bool Translations::Parse(const KeyValues3 *pRoot, CStringVector &vecMessages)
+bool Translations::Parse(const KeyValues3 *pRoot, IPhraseReplacer *pReplacer, CStringVector &vecMessages)
 {
 	// Entering to "Phrases" (if any).
 	{
@@ -98,7 +93,7 @@ bool Translations::Parse(const KeyValues3 *pRoot, CStringVector &vecMessages)
 
 	do
 	{
-		ParsePhrase(pRoot->GetMemberName(n), pRoot->GetMember(n), vecMessages);
+		ParsePhrase(pRoot->GetMemberName(n), pRoot->GetMember(n), pReplacer, vecMessages);
 		n++;
 	}
 	while(n < iMemberCount);
@@ -106,7 +101,7 @@ bool Translations::Parse(const KeyValues3 *pRoot, CStringVector &vecMessages)
 	return true;
 }
 
-bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, CStringVector &vecMessages)
+bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys, IPhraseReplacer *pReplacer, CStringVector &vecMessages)
 {
 	int iMemberCount = pDataKeys->GetMemberCount();
 
@@ -117,18 +112,11 @@ bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys,
 		return false;
 	}
 
-	auto &mapPhrases = m_mapPhrases;
-
-	decltype(m_mapPhrases)::IndexType_t iPhraseKey = m_mapPhrases.InvalidIndex();
-
 	CUtlSymbolLarge sPhrase = GetPhraseSymbol(pszName);
 
-	iPhraseKey = mapPhrases.Find(sPhrase);
+	auto &mapPhrases = m_mapPhrases;
 
-	if(iPhraseKey == mapPhrases.InvalidIndex())
-	{
-		iPhraseKey = mapPhrases.Insert(sPhrase);
-	}
+	auto iPhraseKey = mapPhrases.InsertOrReplace(sPhrase, CPhrase(&m_tableFormatMarks));
 
 	auto &aPhrase = mapPhrases.Element(iPhraseKey);
 
@@ -155,7 +143,10 @@ bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys,
 		}
 		else
 		{
-			aPhrase.InsertContent(GetKey(pszKey), pszValue);
+			CUtlString sPhrase(pszValue);
+
+			sPhrase = pReplacer->ProcessText(sPhrase);
+			aPhrase.InsertContent(GetKey(pszKey), CPhraseContent(sPhrase.String()));
 		}
 
 		n++;
