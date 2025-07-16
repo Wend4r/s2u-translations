@@ -13,14 +13,21 @@ CUtlString Translations::CPhrase::CContent::FormatV(const CFormat &aData, va_lis
 
 	CPhraseBuffer sResult = static_cast<CUtlString>(*this);
 
-	FOR_EACH_MAP(mapFrames, i)
+	FOR_EACH_SYMBOL(*pTable, i)
 	{
 		CFormatBuffer sFrameTarget;
 		CFrameBuffer sFrameResult;
 
-		sFrameTarget.Format("{%s}", pTable->String(mapFrames.Key(i)));
+		sFrameTarget.Format("{%s}", pTable->String(i));
 
-		const char *pszFormatArg = mapFrames.Element(i).String();
+		auto iFoundFrame = mapFrames.Find(i);
+
+		if(iFoundFrame == mapFrames.InvalidIndex())
+		{
+			continue;
+		}
+
+		const char *pszFormatArg = mapFrames.Element(iFoundFrame).String();
 
 		switch(*pszFormatArg)
 		{
@@ -99,7 +106,7 @@ CUtlString Translations::CPhrase::CContent::FormatV(const CFormat &aData, va_lis
 			}
 		}
 
-		sResult.Replace(sFrameTarget.Get(), sFrameResult.Get());
+		sResult.Replace(sFrameTarget.String(), sFrameResult.String());
 	}
 
 	return sResult;
