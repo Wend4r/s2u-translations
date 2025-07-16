@@ -69,13 +69,9 @@ Translations::Key_t Translations::Key(const char *pszInit)
 		          (static_cast<uint64>(*reinterpret_cast<const uint16 *>(pszInit + 4)) << 32) |
 		          (static_cast<uint64>(pszInit[6]) << 48);
 	}
-	else if (!pszInit[8])
-	{
-		nResult = *reinterpret_cast<const uint64 *>(pszInit);
-	}
 	else
 	{
-		AssertMsg(0, "Translations key over 8 characters");
+		AssertMsg(0, "Translations key over 7 characters");
 	}
 
 	return nResult;
