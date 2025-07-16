@@ -50,15 +50,15 @@ public:
 	Translations() : m_mapPhrases(DefLessFunc(const CUtlSymbolLarge)) {}
 
 public:
-	using Key_t = uint32;
-	static Key_t GetKey(const char *pszInit);
+	using Key_t = uint64;
+	static Key_t Key(const char *pszInit);
 
 	class CKey
 	{
 	public:
-		CKey(const char *pszInit) { *reinterpret_cast<Key_t *>(this) = GetKey(pszInit); }
-		CKey(const Key_t nInit) { *reinterpret_cast<Key_t *>(this) = nInit; }
-		Key_t Get() const { return *reinterpret_cast<const Key_t *>(m_sCode); }
+		CKey(const char *pszInit) : m_nKey(Key(pszInit)) {}
+		CKey(const Key_t nInit) : m_nKey(nInit) {}
+		Key_t Get() const { return m_nKey; }
 		const char *String() const { return m_sCode; }
 
 		operator Key_t() const { return Get(); }
@@ -67,7 +67,11 @@ public:
 		bool operator<(const CKey &aRigth) const { return Get() < aRigth.Get(); }
 
 	private:
-		char m_sCode[4];
+		union
+		{
+			Key_t m_nKey;
+			char m_sCode[sizeof(Key_t)];
+		};
 	}; // CKey
 
 	class CPhrase

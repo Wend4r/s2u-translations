@@ -29,7 +29,7 @@
 #include <tier0/commonmacros.h>
 #include <tier1/keyvalues3.h>
 
-Translations::Key_t Translations::GetKey(const char *pszInit)
+Translations::Key_t Translations::Key(const char *pszInit)
 {
 	Key_t nResult {};
 
@@ -53,9 +53,29 @@ Translations::Key_t Translations::GetKey(const char *pszInit)
 	{
 		nResult = *reinterpret_cast<const uint32 *>(pszInit);
 	}
+	else if (!pszInit[5])
+	{
+		nResult = (static_cast<uint64>(*reinterpret_cast<const uint32 *>(pszInit))) |
+		          (static_cast<uint64>(pszInit[4]) << 32);
+	}
+	else if (!pszInit[6])
+	{
+		nResult = (static_cast<uint64>(*reinterpret_cast<const uint32 *>(pszInit))) |
+		          (static_cast<uint64>(*reinterpret_cast<const uint16 *>(pszInit + 4)) << 32);
+	}
+	else if (!pszInit[7])
+	{
+		nResult = (static_cast<uint64>(*reinterpret_cast<const uint32 *>(pszInit))) |
+		          (static_cast<uint64>(*reinterpret_cast<const uint16 *>(pszInit + 4)) << 32) |
+		          (static_cast<uint64>(pszInit[6]) << 48);
+	}
+	else if (!pszInit[8])
+	{
+		nResult = *reinterpret_cast<const uint64 *>(pszInit);
+	}
 	else
 	{
-		AssertMsg(0, "Translations key over 5 characters");
+		AssertMsg(0, "Translations key over 8 characters");
 	}
 
 	return nResult;
@@ -146,7 +166,7 @@ bool Translations::ParsePhrase(const char *pszName, const KeyValues3 *pDataKeys,
 			CUtlString sPhrase(pszValue);
 
 			sPhrase = pReplacer->ProcessText(sPhrase);
-			aPhrase.InsertContent(GetKey(pszKey), CPhraseContent(sPhrase.String()));
+			aPhrase.InsertContent(Key(pszKey), CPhraseContent(sPhrase.String()));
 		}
 
 		n++;
