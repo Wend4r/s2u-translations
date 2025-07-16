@@ -5,29 +5,22 @@
 
 CUtlString Translations::CPhrase::CContent::FormatV(const CFormat &aData, va_list aParams) const
 {
-	const auto *pTable = aData.GetTable();
+	const auto *pTable = aData.Table();
 
 	AssertMsg(pTable, "Format marks table is not ready");
 
-	const auto &mapFrames = aData.GetFrames();
+	const auto &vecArgs = aData.Args();
 
 	CPhraseBuffer sResult = static_cast<CUtlString>(*this);
 
-	FOR_EACH_SYMBOL(*pTable, i)
+	for(const auto &arg : vecArgs)
 	{
 		CFormatBuffer sFrameTarget;
 		CFrameBuffer sFrameResult;
 
-		sFrameTarget.Format("{%s}", pTable->String(i));
+		sFrameTarget.Format("{%s}", pTable->String(arg.symName));
 
-		auto iFoundFrame = mapFrames.Find(i);
-
-		if(iFoundFrame == mapFrames.InvalidIndex())
-		{
-			continue;
-		}
-
-		const char *pszFormatArg = mapFrames.Element(iFoundFrame).String();
+		const char *pszFormatArg = arg.sFormatMark.String();
 
 		switch(*pszFormatArg)
 		{

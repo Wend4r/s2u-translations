@@ -114,19 +114,25 @@ public:
 			friend class CPhrase;
 
 		public:
-			CFormat(CUtlSymbolTable *pTable = nullptr) : m_pTable(pTable), m_mapFormat(DefLessFunc(const CUtlSymbol)) {}
+			struct Argument_t
+			{
+				CUtlSymbol symName;
+				CBufferStringN<8> sFormatMark;
+			};
+
+			CFormat(CUtlSymbolTable *pTable = nullptr) : m_vecArgs(0, 8), m_pTable(pTable) {}
 
 		public:
-			const CUtlSymbolTable *GetTable() const { return m_pTable; }
-			const CUtlMap<CUtlSymbol, CBufferString> &GetFrames() const { return m_mapFormat; }
+			const CUtlSymbolTable *Table() const { return m_pTable; }
+			const CUtlVector<Argument_t> &Args() const { return m_vecArgs; }
 			CUtlString GenerateString() const;
 
 		protected:
 			const char *ParseString(const char *pszText, CStringVector &vecMessages);
 
 		private:
+			CUtlVector<Argument_t> m_vecArgs;
 			CUtlSymbolTable *m_pTable;
-			CUtlMap<CUtlSymbol, CBufferString> m_mapFormat;
 		}; // CFormat
 
 		const CFormat &GetFormat() const { return m_aFormat; }

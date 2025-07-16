@@ -4,9 +4,9 @@ CUtlString Translations::CPhrase::CFormat::GenerateString() const
 {
 	CXLargeBufferString sResult;
 
-	FOR_EACH_MAP_FAST(m_mapFormat, iFrame)
+	for(const auto &arg : m_vecArgs)
 	{
-		sResult.AppendFormat("{%d:%s},", m_mapFormat.Key(iFrame).GetId(), m_mapFormat.Element(iFrame).String());
+		sResult.AppendFormat("{%s:%s},", Table()->String(arg.symName), arg.sFormatMark.String());
 	}
 
 	sResult.SetLength(sResult.Length() - 1);
@@ -17,10 +17,6 @@ CUtlString Translations::CPhrase::CFormat::GenerateString() const
 const char *Translations::CPhrase::CFormat::ParseString(const char *pszText, CStringVector &vecMessages)
 {
 	const char *pszFirstMark = nullptr;
-
-	const auto iInvalid = decltype(m_mapFormat)::InvalidIndex();
-
-	decltype(m_mapFormat)::KeyType_t iKey = iInvalid;
 
 	while(*pszText)
 	{
@@ -36,34 +32,31 @@ const char *Translations::CPhrase::CFormat::ParseString(const char *pszText, CSt
 			{
 				vecMessages.AddToTail(CSmallBufferString({"Format: ", "no formated mark"}));
 
-				return pszText;
+				break;
 			}
 
 			CSmallBufferString sFormatMark(pszFirstMark, static_cast<int>(pszText - pszFirstMark));
 
-			iKey = m_mapFormat.Insert(m_pTable->AddString(sFormatMark.String()));
-
 			pszText++;
-			pszFirstMark = nullptr;
-		}
 
-		if(iKey != iInvalid)
-		{
-			CBufferString sFormatArg;
+			CBufferStringN<8> sFormatArg;
 
-			while(*pszText && *pszText != '}')
+			while(*pszText != '}')
 			{
 				sFormatArg += *pszText;
 				pszText++;
+
+				if(!*pszText)
+				{
+					vecMessages.AddToTail(CSmallBufferString({"Format: ", "no closed curly brace"}));
+
+					return pszText;
+				}
 			}
 
-			m_mapFormat.Element(iKey) = Move(sFormatArg);
-			iKey = iInvalid;
-		}
+			m_vecArgs.AddToTail(Argument_t{m_pTable->AddString(sFormatMark.String()), Move(sFormatArg)});
 
-		if(*pszText == ',')
-		{
-			iKey = iInvalid;
+			pszFirstMark = nullptr;
 		}
 
 		pszText++;
