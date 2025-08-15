@@ -176,7 +176,7 @@ public:
 
 protected:
 	CUtlSymbolLarge GetPhraseSymbol(const char *pszName) { return m_aPhraseSymbolTable.AddString(pszName); }
-	CUtlSymbolLarge FindPhraseSymbol(const char *pszName) const { return m_aPhraseSymbolTable.Find(pszName); }
+	CUtlSymbolLarge FindPhraseSymbol(const char *pszName) const { return m_aPhraseSymbolTable.FindString(pszName); }
 
 private:
 	CUtlSymbolTable m_tableFormatMarks;
